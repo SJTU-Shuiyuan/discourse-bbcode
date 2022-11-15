@@ -64,7 +64,7 @@ function setupMarkdownIt(md) {
     wrap: wrap(
       "span",
       "style",
-      (tagInfo) => "font-size:" + tagInfo.attrs._default + "px"
+      (tagInfo) => "font-size:" + tagInfo.attrs._default.trim() + "px"
     ),
   });
 
@@ -73,7 +73,7 @@ function setupMarkdownIt(md) {
     wrap: wrap(
       "span",
       "style",
-      (tagInfo) => "font-family:" + tagInfo.attrs._default
+      (tagInfo) => `font-family:'${tagInfo.attrs._default.trim()}'`
     ),
   });
 
@@ -82,7 +82,7 @@ function setupMarkdownIt(md) {
     wrap: wrap(
       "span",
       "style",
-      (tagInfo) => "color:" + tagInfo.attrs._default
+      (tagInfo) => "color:" + tagInfo.attrs._default.trim()
     ),
   });
 
@@ -241,7 +241,7 @@ export function setup(helper) {
   helper.allowList({
     custom(tag, name, value) {
       if (tag === "span" && name === "style") {
-        return /^(font-size:(xx-small|x-small|small|medium|large|x-large|xx-large|[0-9]*px)|color:#?[a-zA-Z0-9]+|font-family:[^;']*(;)?|background-color:#?[a-zA-Z0-9]+)$/.exec(
+        return /^(font-size:(xx-small|x-small|small|medium|large|x-large|xx-large|[0-9]*px)|color:#?[a-zA-Z0-9]+|font-family:[^;']*(;)?|background-color:#?[a-zA-Z0-9]+|color:#?[a-zA-Z0-9]+|font-family:[\s\S]+)$/.exec(
           value
         );
       }
@@ -256,124 +256,5 @@ export function setup(helper) {
     opts.features["bbcode"] = true;
   });
 
-  if (helper.markdownIt) {
-    helper.registerPlugin(setupMarkdownIt);
-    return;
-  }
-
-  const builders = requirejs("pretty-text/engines/discourse-markdown/bbcode")
-    .builders;
-  const {
-    register,
-    replaceBBCode,
-    rawBBCode,
-    replaceBBCodeParamsRaw,
-  } = builders(helper);
-
-  replaceBBCode("small", (contents) =>
-    ["span", { style: "font-size:x-small" }].concat(contents)
-  );
-  replaceBBCode("highlight", (contents) =>
-    ["div", { class: "highlight" }].concat(contents)
-  );
-
-  ["left", "center", "right"].forEach((direction) => {
-    replaceBBCode(direction, (contents) =>
-      ["div", { style: "text-align:" + direction }].concat(contents)
-    );
-  });
-
-  replaceBBCode("edit", (contents) =>
-    [
-      "div",
-      { class: "sepquote" },
-      ["span", { class: "smallfont" }, "Edit:"],
-      ["br"],
-      ["br"],
-    ].concat(contents)
-  );
-
-  replaceBBCode("ot", (contents) =>
-    [
-      "div",
-      { class: "sepquote" },
-      ["span", { class: "smallfont" }, "Off Topic:"],
-      ["br"],
-      ["br"],
-    ].concat(contents)
-  );
-
-  replaceBBCode("indent", (contents) => [
-    "blockquote",
-    ["div"].concat(contents),
-  ]);
-
-  helper.addPreProcessor(replaceFontColor);
-  helper.addPreProcessor(replaceFontSize);
-  helper.addPreProcessor(replaceFontFace);
-
-  register("aname", (contents, param) =>
-    ["a", { name: param, "data-bbcode": true }].concat(contents)
-  );
-  register("jumpto", (contents, param) =>
-    ["a", { href: "#" + param, "data-bbcode": true }].concat(contents)
-  );
-  register("rule", (contents, param) => [
-    "div",
-    {
-      style:
-        "margin: 6px 0; height: 0; border-top: 1px solid " +
-        contents +
-        "; margin: auto; width: " +
-        param,
-    },
-  ]);
-
-  rawBBCode("noparse", (contents) => contents);
-  rawBBCode("fphp", (contents) => [
-    "a",
-    {
-      href: "http://www.php.net/manual-lookup.php?function=" + contents,
-      "data-bbcode": true,
-    },
-    contents,
-  ]);
-  replaceBBCodeParamsRaw("fphp", (param, contents) => [
-    "a",
-    {
-      href: "http://www.php.net/manual-lookup.php?function=" + param,
-      "data-bbcode": true,
-    },
-    contents,
-  ]);
-
-  rawBBCode("google", (contents) => [
-    "a",
-    { href: "http://www.google.com/search?q=" + contents, "data-bbcode": true },
-    contents,
-  ]);
-
-  helper.replaceBlock({
-    start: /\[list=?(\w)?\]([\s\S]*)/gim,
-    stop: /\[\/list\]/gim,
-    emitter(blockContents, matches) {
-      const contents = matches[1] ? ["ol", { type: matches[1] }] : ["ul"];
-
-      if (blockContents.length) {
-        blockContents.forEach((bc) => {
-          const lines = bc.split(/\n/);
-          lines.forEach((line) => {
-            if (line.indexOf("[*]") === 0) {
-              const li = this.processInline(line.slice(3));
-              if (li) {
-                contents.push(["li"].concat(li));
-              }
-            }
-          });
-        });
-      }
-
-      return contents;
-    },
-  });
+  helper.registerPlugin(setupMarkdownIt);
 }
